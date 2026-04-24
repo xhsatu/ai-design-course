@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一课：训练一个认识你的 Claude</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+
+/* === VIEWPORT BASE === */
+html, body { height: 100%; overflow: hidden; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+.slide {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* === THEME VARIABLES === */
+:root {
+  --blue: #0e7490;
+  --blue-light: #a5f3fc;
+  --dark: #0d0d14;
+  --dark-2: #13131e;
+  --accent: #a5f3fc;
+  --accent-2: #a5f3fc;
+  --white: #f8fafc;
+  --dim: rgba(248,250,252,0.6);
+  --dim2: rgba(248,250,252,0.3);
+  --grid: rgba(255,255,255,0.02);
+  --mono: 'Space Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --slide-pad: clamp(2rem, 5vw, 5rem);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--dark); color: var(--white); font-family: var(--mono); }
+
+/* === GRID BACKGROUND — 极淡，仅作底纹 === */
+.grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: clamp(48px, 6vw, 80px) clamp(48px, 6vw, 80px);
+  pointer-events: none;
+}
+
+/* === ANIMATIONS === */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.65s var(--ease), transform 0.65s var(--ease);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(1) { transition-delay: 0.05s; }
+.reveal:nth-child(2) { transition-delay: 0.15s; }
+.reveal:nth-child(3) { transition-delay: 0.25s; }
+.reveal:nth-child(4) { transition-delay: 0.35s; }
+.reveal:nth-child(5) { transition-delay: 0.45s; }
+.reveal:nth-child(6) { transition-delay: 0.55s; }
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity 0.65s var(--ease), transform 0.65s var(--ease);
+}
+.slide.visible .reveal-left { opacity: 1; transform: translateX(0); }
+
+/* === PROGRESS BAR === */
+.progress-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: var(--accent);
+  width: 0%;
+  z-index: 1000;
+  transition: width 0.3s ease;
+}
+
+/* === NAV DOTS === */
+.nav-dots {
+  position: fixed;
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.6vh, 8px);
+  z-index: 999;
+  list-style: none;
+}
+.nav-dots li {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--dim2);
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+}
+.nav-dots li.active {
+  background: var(--accent);
+  transform: scale(1.4);
+}
+
+/* === KEYBOARD HINT === */
+.kb-hint {
+  position: fixed;
+  bottom: clamp(0.75rem, 2vh, 1.25rem);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+  color: var(--dim2);
+  letter-spacing: 0.12em;
+  font-family: var(--mono);
+  pointer-events: none;
+  z-index: 998;
+}
+
+/* === SLIDE COUNTER === */
+.slide-counter {
+  position: fixed;
+  bottom: clamp(0.75rem, 2vh, 1.25rem);
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+  color: var(--dim2);
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  z-index: 998;
+}
+
+/* =============================================
+   SLIDE 0: VIDEO
+============================================= */
+.slide-video {
+  background: #000;
+  padding: 0;
+  overflow: hidden;
+}
+.slide-video video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* =============================================
+   SLIDE 1: TITLE — Split layout
+============================================= */
+.slide-title {
+  display: grid;
+  grid-template-columns: 32% 68%;
+  background: var(--dark);
+}
+.slide-title .left-panel {
+  background: var(--accent);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: clamp(2rem, 4vw, 4rem);
+  position: relative;
+  overflow: hidden;
+}
+.slide-title .course-tag {
+  font-family: var(--mono);
+  font-size: clamp(0.6rem, 0.8vw, 0.72rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(13,13,20,0.5);
+  margin-bottom: clamp(1rem, 2vh, 1.5rem);
+  line-height: 1.6;
+}
+.slide-title .left-panel h2 {
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 3.2vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--dark);
+  letter-spacing: -0.02em;
+}
+.hl-dark {
+  display: block;
+  color: rgba(13,13,20,0.45);
+  font-weight: 700;
+}
+.slide-title .right-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(3rem, 6vw, 7rem);
+  position: relative;
+}
+.slide-title .divider { display: none; }
+.slide-title .sub {
+  font-family: var(--display);
+  font-size: clamp(1.4rem, 2.8vw, 2.4rem);
+  font-weight: 600;
+  color: var(--white);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  max-width: 600px;
+}
+
+/* =============================================
+   STANDARD CONTENT SLIDE
+============================================= */
+.slide-content-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: left;
+  padding: var(--slide-pad);
+  height: 100%;
+  background: var(--dark);
+  position: relative;
+}
+.slide-content-wrap > * {
+  width: 100%;
+  max-width: 760px;
+}
+.slide-label {
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: clamp(0.5rem, 1.2vh, 1rem);
+  font-family: var(--mono);
+  line-height: 1.5;
+}
+.slide-content-wrap h2 {
+  font-family: var(--display);
+  font-size: clamp(2rem, 3.8vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--white);
+  margin-bottom: clamp(1rem, 2.5vh, 2rem);
+  letter-spacing: -0.02em;
+}
+.slide-content-wrap p {
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  color: var(--dim);
+  line-height: 2;
+  max-width: 700px;
+}
+.slide-content-wrap strong { color: var(--white); font-weight: 700; }
+
+/* FORMULA BOX */
+.formula {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(165, 243, 252, 0.08);
+  border: 1px solid rgba(165, 243, 252, 0.25);
+  border-left: 3px solid var(--accent);
+  padding: clamp(0.85rem, 1.8vh, 1.4rem) clamp(1.25rem, 2.5vw, 2rem);
+  border-radius: 4px;
+  margin: clamp(1rem, 2vh, 1.75rem) 0;
+  font-family: var(--mono);
+  font-size: clamp(1rem, 1.5vw, 1.15rem);
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.7;
+}
+
+/* BULLET LIST */
+.bullet-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.75rem, 1.5vh, 1.25rem);
+  margin-top: clamp(0.75rem, 1.5vh, 1.25rem);
+  text-align: left;
+}
+.bullet-list li {
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  color: var(--dim);
+  line-height: 1.75;
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(0.6rem, 1vw, 0.85rem);
+}
+.bullet-list li::before {
+  content: '—';
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.1em;
+}
+.bullet-list li strong { color: var(--white); }
+
+/* NUMBERED LIST */
+.num-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.85rem, 1.8vh, 1.5rem);
+  counter-reset: num;
+  text-align: left;
+}
+.num-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  counter-increment: num;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  color: var(--dim);
+  line-height: 1.75;
+}
+.num-list li::before {
+  content: counter(num, decimal-leading-zero);
+  font-family: var(--mono);
+  font-size: clamp(0.65rem, 1vw, 0.8rem);
+  color: var(--accent);
+  flex-shrink: 0;
+  padding-top: 0.1em;
+  min-width: 2em;
+}
+.num-list li strong { color: var(--white); }
+
+/* MODEL GRID */
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  margin-top: clamp(1rem, 2vh, 1.5rem);
+  text-align: left;
+}
+.model-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(165,243,252,0.12);
+  border-top: 2px solid var(--accent);
+  padding: clamp(0.85rem, 1.8vw, 1.4rem);
+  border-radius: 6px;
+}
+.model-card .model-name {
+  font-family: var(--display);
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.6em;
+}
+.model-card p {
+  font-size: clamp(0.88rem, 1.2vw, 1rem);
+  color: var(--dim);
+  line-height: 1.75;
+  max-width: none;
+}
+
+/* SPLIT LAYOUT: left text, right callout */
+.split-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: center;
+}
+.callout-box {
+  background: rgba(26, 86, 219, 0.15);
+  border: 1px solid rgba(26, 86, 219, 0.4);
+  padding: clamp(1rem, 2.5vh, 2rem) clamp(1rem, 2vw, 1.75rem);
+  border-radius: 8px;
+}
+.callout-box .callout-label {
+  font-size: clamp(0.5rem, 0.75vw, 0.65rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: clamp(0.5rem, 1vh, 0.75rem);
+  font-family: var(--mono);
+}
+.callout-box p {
+  font-size: clamp(0.65rem, 1.1vw, 0.85rem);
+  color: var(--dim);
+  line-height: 1.75;
+}
+
+/* CODE / CONTEXT DIAGRAM */
+.context-diagram {
+  font-family: var(--mono);
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  color: var(--dim);
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(165,243,252,0.12);
+  border-radius: 6px;
+  padding: clamp(1.1rem, 2.2vh, 1.75rem) clamp(1.25rem, 2.5vw, 2rem);
+  line-height: 2.2;
+  margin-top: clamp(0.75rem, 1.5vh, 1.25rem);
+  text-align: left;
+}
+.context-diagram .arrow { color: var(--accent); }
+.context-diagram .comment { color: var(--dim2); }
+
+/* COMPARISON ROW */
+.compare-row {
+  display: flex;
+  gap: clamp(1rem, 2vw, 2rem);
+  margin-top: clamp(1rem, 2vh, 1.5rem);
+}
+.compare-item {
+  flex: 1;
+  padding: clamp(1rem, 2vh, 1.5rem) clamp(1rem, 2vw, 1.5rem);
+  border-radius: 6px;
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  line-height: 1.75;
+  text-align: left;
+}
+.compare-item.dim-bg {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--dim);
+}
+.compare-item.accent-bg {
+  background: rgba(165,243,252,0.08);
+  border: 1px solid rgba(165,243,252,0.25);
+  color: var(--accent);
+}
+.compare-item .compare-label {
+  font-size: clamp(0.65rem, 0.9vw, 0.75rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.6em;
+  font-family: var(--mono);
+}
+
+/* BIG QUESTION SLIDE */
+.slide-question {
+  background: var(--dark-2);
+}
+.slide-question .q-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: var(--slide-pad);
+  position: relative;
+}
+.slide-question .q-wrap > * {
+  width: 100%;
+  max-width: 760px;
+  text-align: left;
+}
+.slide-question .big-q {
+  font-family: var(--display);
+  font-size: clamp(2rem, 4.2vw, 3.8rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  max-width: 760px;
+  text-align: left;
+}
+.slide-question .big-q .hl { color: var(--accent); }
+.slide-question .q-sub {
+  margin-top: clamp(1.25rem, 2.5vh, 2rem);
+  font-size: clamp(1rem, 1.5vw, 1.15rem);
+  color: var(--dim);
+  font-family: var(--mono);
+  line-height: 1.9;
+  text-align: left;
+}
+
+/* PROMPT BLOCK */
+.prompt-block {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(165,243,252,0.2);
+  border-left: 2px solid var(--accent);
+  border-radius: 6px;
+  padding: clamp(1rem, 2vh, 1.5rem) clamp(1.25rem, 2.5vw, 2rem);
+  font-family: var(--mono);
+  font-size: clamp(0.88rem, 1.25vw, 1rem);
+  text-align: left;
+  color: var(--dim);
+  line-height: 1.85;
+  margin-top: clamp(1rem, 2vh, 1.5rem);
+  max-height: 55vh;
+  overflow: hidden;
+}
+.prompt-block .prompt-tag {
+  color: var(--accent);
+  font-size: clamp(0.5rem, 0.75vw, 0.62rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 0.75em;
+  display: block;
+}
+.prompt-block strong { color: var(--accent-2); }
+
+/* INTERACTION BADGE */
+.interact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  background: rgba(165, 243, 252, 0.08);
+  border: 1px solid rgba(165, 243, 252, 0.2);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: clamp(0.72rem, 1vw, 0.85rem);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.35em 0.85em;
+  border-radius: 2px;
+  margin-top: clamp(1rem, 2vh, 1.5rem);
+}
+.interact-badge::before { content: '◆'; font-size: 0.6em; }
+
+/* CLOSING SLIDE */
+.slide-close {
+  background: var(--blue);
+  display: grid;
+  grid-template-columns: 42% 58%;
+}
+.slide-close .left-p {
+  background: rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--slide-pad);
+}
+.slide-close .left-p .big-num {
+  font-family: var(--display);
+  font-size: clamp(5rem, 14vw, 12rem);
+  font-weight: 800;
+  color: rgba(255,255,255,0.08);
+  line-height: 1;
+  letter-spacing: -0.05em;
+  pointer-events: none;
+  user-select: none;
+}
+.slide-close .right-p {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: left;
+  padding: var(--slide-pad);
+}
+.slide-close .right-p > * { width: 100%; }
+.slide-close h2 {
+  font-family: var(--display);
+  font-size: clamp(1.75rem, 4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: clamp(1rem, 2.5vh, 2rem);
+}
+.slide-close .close-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 1.2vh, 1rem);
+}
+.slide-close .close-list li {
+  font-size: clamp(0.65rem, 1.1vw, 0.85rem);
+  color: rgba(255,255,255,0.75);
+  line-height: 1.6;
+  display: flex;
+  gap: 0.75em;
+  align-items: flex-start;
+}
+.slide-close .close-list li::before {
+  content: counter(n, decimal-leading-zero);
+  counter-increment: n;
+  color: rgba(255,255,255,0.4);
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 0.8em;
+}
+.slide-close .close-list { counter-reset: n; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+  html { scroll-behavior: auto; }
+}
+@media (max-height: 700px) {
+  :root { --slide-pad: clamp(1.25rem, 3.5vw, 3rem); }
+}
+@media (max-height: 600px) {
+  .nav-dots, .kb-hint { display: none; }
+  :root { --slide-pad: clamp(1rem, 3vw, 2rem); }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots" aria-label="Slide navigation"></nav>
+<div class="kb-hint">← → 方向键翻页 &nbsp;·&nbsp; Space 下一页</div>
+<div class="slide-counter" id="slideCounter"></div>
+
+<!-- ===== SLIDE 0: TITLE ===== -->
+<section class="slide slide-title" aria-label="标题页">
+  <div class="left-panel">
+    <div class="grid-bg"></div>
+    <p class="course-tag reveal-left">给体验设计师的 AI 转型课 · 第一课</p>
+    <h2 class="reveal-left">训练一个<br><span class="hl-dark">认识你的</span><br>Claude</h2>
+  </div>
+  <div class="right-panel">
+    <div class="grid-bg"></div>
+    <p class="sub reveal">如果有一个赛博同事，<br>从今天开始每天跟你一起工作，<br>什么都能做，随时待命。<br><br><span style="color:var(--accent)">你会想怎么跟他合作？</span></p>
+  </div>
+</section>
+
+<!-- ===== SLIDE 1: VIDEO ===== -->
+<section class="slide slide-video" aria-label="开场视频">
+  <video
+    src="opening.mov"
+    style="width:100%;height:100%;object-fit:contain;"
+    loop
+    playsinline
+    autoplay
+    id="openingVideo"
+  ></video>
+</section>
+
+<!-- ===== SLIDE 2: 今天做三件事 ===== -->
+<section class="slide" aria-label="今天的目标">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">今天的目标</p>
+    <h2 class="reveal">今天，我们做三件事</h2>
+    <ol class="num-list">
+      <li class="reveal"><strong>搞清楚你的赛博同事是谁</strong></li>
+      <li class="reveal"><strong>让 TA 真正认识你</strong></li>
+      <li class="reveal"><strong>让 TA 替你做一件只有你才能做的事</strong></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===== SLIDE 3: 模型是什么 ===== -->
+<section class="slide" aria-label="模型是什么">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">你在跟什么说话</p>
+    <h2 class="reveal">Claude、GPT、Gemini…<br>只是聪不聪明的差别？</h2>
+    <div class="formula reveal">AI 能力（模型）= 见过多少东西 × 怎么被训练</div>
+    <p class="reveal">不是聪明程度的差别，是训练出来的<strong>本质不同</strong>。<br>
+    我们说的"模型"，就是 AI 背后真正在运作的那个东西。</p>
+    <span class="interact-badge reveal">互动：有同学用过多个 AI 吗？能感受到区别吗？</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 4: 三个模型 ===== -->
+<section class="slide" aria-label="三个顶尖模型">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">三个顶尖模型，三种本质差异</p>
+    <div class="model-grid">
+      <div class="model-card reveal">
+        <div class="model-name">Claude</div>
+        <p>有内核、有原则、会反驳。<br>擅长深度推理和复杂判断。</p>
+      </div>
+      <div class="model-card reveal">
+        <div class="model-name">GPT</div>
+        <p>能干、全面、生态最广。<br>接入产品最多，最会"干活"。</p>
+      </div>
+      <div class="model-card reveal">
+        <div class="model-name">Gemini</div>
+        <p>和 Google 全家桶打通。<br>多模态突出，支持超长文本。</p>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top: clamp(0.75rem,1.5vh,1.25rem);">跟不同模型说话，就像跟不同特质的人说话。<strong>你需要知道对方是谁。</strong></p>
+    <span class="interact-badge reveal">实操：同一个问题问一下 Claude / 你手机里的 AI，分享差异</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 5: Prompt ===== -->
+<section class="slide" aria-label="Prompt 是什么">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">你怎么跟它说话</p>
+    <h2 class="reveal">你每说一句话，<br>就是在发一个 <span style="color:var(--accent)">Prompt</span></h2>
+    <div class="compare-row">
+      <div class="compare-item dim-bg reveal">
+        <div class="compare-label">少量 Prompt</div>
+        → 模糊的输出
+      </div>
+      <div class="compare-item accent-bg reveal">
+        <div class="compare-label">丰富 Prompt</div>
+        → 精准的输出
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">你补充的信息越多，输出就越精准。</p>
+    <span class="interact-badge reveal">实操：同一个问题，第一次不给背景，第二次给足背景</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 6: LLM 没有记忆 ===== -->
+<section class="slide slide-question" aria-label="LLM 没有记忆">
+  <div class="q-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">一个反直觉的事实</p>
+    <p class="big-q reveal">但 LLM 本身<br><span class="hl">没有记忆。</span><br>每次交互，<br>对它都是全新的。</p>
+    <p class="q-sub reveal">那为什么它还能记得你前面说过什么？</p>
+    <span class="interact-badge reveal">互动：有同学知道吗？</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 7: Context ===== -->
+<section class="slide" aria-label="Context 是什么">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">揭秘</p>
+    <h2 class="reveal">客户端帮你做了<br>一件事</h2>
+    <div class="context-diagram reveal">
+      <span class="comment">// 把所有对话打包，每次都重新发给 LLM</span><br>
+      你发第 1 条<br>
+      你发第 2 条 <span class="arrow">→</span> 客户端把 1+2 打包重新发<br>
+      你发第 3 条 <span class="arrow">→</span> 客户端把 1+2+3 打包重新发<br>
+      <br>
+      <span style="color:var(--accent)">这个打包的内容，就是 Context（上下文）</span>
+    </div>
+    <p class="reveal" style="margin-top:clamp(0.5rem,1vh,0.75rem);">是端上给它加了 Context，它才变成了"有记忆"。</p>
+  </div>
+</section>
+
+<!-- ===== SLIDE 8: Context Window ===== -->
+<section class="slide" aria-label="Context Window">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">但有上限</p>
+    <h2 class="reveal">这叫 <span style="color:var(--accent)">Context Window</span><br>（上下文窗口）</h2>
+    <p class="reveal">云端算力有限，必然存在上限。<br>聊久了会感觉记不住事——</p>
+    <div class="formula reveal" style="margin-top:clamp(0.5rem,1vh,0.75rem);">
+      不是真的忘，是内容太多，<br>模型的注意力已经覆盖不到了
+    </div>
+    <span class="interact-badge reveal">互动：大家有遇到过"它忘了"的情况吗？</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 9: 怎么让它永远记得 ===== -->
+<section class="slide slide-question" aria-label="怎么让它永远记得你">
+  <div class="q-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">问题来了</p>
+    <p class="big-q reveal">如果希望 TA 永远记得：<br>我是谁、<br>我的偏好是什么、<br>我的<span class="hl">风格</span>是什么——<br>怎么办？</p>
+    <span class="interact-badge reveal">互动：有同学知道吗？</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 10: 先问一句话 ===== -->
+<section class="slide" aria-label="先问一句话">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">在开始之前</p>
+    <h2 class="reveal">先问它一句话</h2>
+    <div class="formula reveal" style="font-size:clamp(0.9rem,2vw,1.5rem); padding:clamp(1rem,2.5vh,2rem);">
+      "你了解我吗？"
+    </div>
+    <p class="reveal">记住它的回答。<strong>等下我们会再问一次。</strong></p>
+    <span class="interact-badge reveal">实操：在 Claude Code 里进行操作</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 11: CLAUDE.md ===== -->
+<section class="slide" aria-label="CLAUDE.md 是什么">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">解决方案</p>
+    <h2 class="reveal">有一个文件，<br>叫 <span style="color:var(--accent)">CLAUDE.md</span></h2>
+    <div class="compare-row">
+      <div class="compare-item dim-bg reveal">
+        <div class="compare-label">正常对话</div>
+        Context 从零开始<br><span style="color:var(--dim2)">TA 不认识你</span>
+      </div>
+      <div class="compare-item accent-bg reveal">
+        <div class="compare-label">有 CLAUDE.md</div>
+        永远在 Context 里<br><span style="color:var(--accent)">TA 一直认识你</span>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">你写进去的东西，它每次对话都会读到。</p>
+    <span class="interact-badge reveal">实操：让 Claude Code 打开 CLAUDE.md 看看里面有什么</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 12: 让 TA 认识你 ===== -->
+<section class="slide" aria-label="让 TA 认识你">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">现在</p>
+    <h2 class="reveal">让 TA 认识你</h2>
+    <ul class="bullet-list">
+      <li class="reveal"><strong>你是谁</strong> — 名字、职业、性格、爱好，越真实越好</li>
+      <li class="reveal"><strong>你喜欢别人怎么跟你说话</strong> — 语气、方式、风格，没有标准答案</li>
+      <li class="reveal"><strong>你最不喜欢什么习惯</strong> — 别人或 AI 跟你说话时的</li>
+    </ul>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">并让 Claude 把对话整理成自我描述，<strong>写入 CLAUDE.md</strong>。</p>
+    <span class="interact-badge reveal">实操：在 Claude Code 里进行操作</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 13: 再问一次 ===== -->
+<section class="slide slide-question" aria-label="再问一次">
+  <div class="q-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">验证</p>
+    <p class="big-q reveal">重新开一个对话，<br>再问一次：<br><br><span class="hl">"你了解我吗？"</span></p>
+    <p class="q-sub reveal">和刚才第一次的回答，有什么不同？</p>
+    <span class="interact-badge reveal">互动：分享一下</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 14: 认识还不够 ===== -->
+<section class="slide slide-question" aria-label="认识还不够">
+  <div class="q-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">但是</p>
+    <p class="big-q reveal">TA 现在认识你了。<br><br>但光是<span class="hl">"认识"</span><br>有什么用？</p>
+    <p class="q-sub reveal">我们来看看——它能不能真正替你做一件事。</p>
+  </div>
+</section>
+
+<!-- ===== SLIDE 15: 发这个 Prompt ===== -->
+<section class="slide" aria-label="发 Prompt">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">实操</p>
+    <h2 class="reveal">把这段 Prompt 发给 TA</h2>
+    <div class="prompt-block reveal">
+      <span class="prompt-tag">Prompt</span>
+      基于你对我的了解，帮我生成一个属于我的 App。<br><br>
+      这个 App 的定位和功能，必须完全基于你对我这个人的理解。不要问我做什么，你来决定。<br><br>
+      <strong>最重要的一点：</strong>视觉风格必须体现我这个人的特质——配色、字体、间距、质感，每一个设计决策都应该能说明"这是为这个人做的"，而不是通用模板。风格和色彩是表达我是谁的主要语言。<br><br>
+      技术：HTML+CSS+JS 单文件，设置 viewport，系统字体栈，字阶清晰。<br>
+      设计：给设计师看的，标准要高，每个细节都要认真处理。
+    </div>
+    <span class="interact-badge reveal">实操：在 Claude Code 里进行操作</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 16: 猜一猜 ===== -->
+<section class="slide slide-question" aria-label="猜一猜">
+  <div class="q-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">跑完之前</p>
+    <p class="big-q reveal">TA 在做的是<br>什么类型的 App？<br>选的颜色是什么？<br><br><span class="hl">猜对了吗？</span></p>
+    <span class="interact-badge reveal">互动：分享一下特别像自己的，或者特别不像的</span>
+  </div>
+</section>
+
+<!-- ===== SLIDE 17: 为什么不一样 ===== -->
+<section class="slide" aria-label="为什么不一样">
+  <div class="slide-content-wrap">
+    <div class="grid-bg"></div>
+    <p class="slide-label reveal">结论</p>
+    <h2 class="reveal">同一个 Prompt，<br>为什么每个人出来<br>的东西不一样？</h2>
+    <div class="formula reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      因为 CLAUDE.md 不一样。它认识的是不同的人。
+    </div>
+  </div>
+</section>
+
+<!-- ===== SLIDE 18: 接下来 / CLOSING ===== -->
+<section class="slide slide-close" aria-label="接下来">
+  <div class="left-p">
+    <div class="big-num reveal">19</div>
+  </div>
+  <div class="right-p">
+    <h2 class="reveal">接下来你可以</h2>
+    <ol class="close-list">
+      <li class="reveal">和 Claude Code 交互，继续完善自己的 App</li>
+      <li class="reveal">有新的想法，做一些新的东西</li>
+      <li class="reveal">QA：自由提出问题</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===== INLINE EDIT SUPPORT ===== -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="编辑模式 (E)">✏️</button>
+<div class="edit-banner" id="editBanner">编辑模式 · 点击文字修改 · Ctrl+S 保存</div>
+
+<style>
+.edit-hotzone { position:fixed; top:0; left:0; width:80px; height:80px; z-index:10000; cursor:pointer; }
+.edit-toggle { position:fixed; top:1rem; left:1rem; z-index:10001; background:rgba(26,86,219,0.85); color:#fff; border:none; border-radius:4px; padding:0.4em 0.75em; font-size:0.75rem; cursor:pointer; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+.edit-toggle.show, .edit-toggle.active { opacity:1; pointer-events:auto; }
+.edit-banner { position:fixed; top:0; left:0; right:0; background:rgba(26,86,219,0.9); color:#fff; font-family:var(--mono); font-size:0.65rem; letter-spacing:0.12em; text-align:center; padding:0.4em; z-index:9999; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+.edit-banner.active { opacity:1; }
+body.edit-active [data-editable] { outline:1px dashed rgba(165,243,252,0.4); cursor:text; }
+</style>
+
+<script>
+/* === SLIDE CONTROLLER === */
+class SlidePresentation {
+  constructor() {
+    this.slides = Array.from(document.querySelectorAll('.slide'));
+    this.current = 0;
+    this.total = this.slides.length;
+    this.locked = false;
+
+    this.progressBar = document.getElementById('progressBar');
+    this.counter = document.getElementById('slideCounter');
+    this.navDotsEl = document.getElementById('navDots');
+
+    this.buildNavDots();
+    this.setupObserver();
+    this.setupKeyboard();
+    this.setupTouch();
+    this.setupWheel();
+    this.goTo(0);
+
+    // Video: auto-play when slide becomes visible (slide 1, index 1)
+    // Title slide is first (index 0), so user has already interacted — video can play with sound
+    const video = document.getElementById('openingVideo');
+    if (video) {
+      const videoObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+            video.currentTime = 0;
+          }
+        });
+      }, { threshold: 0.5 });
+      videoObs.observe(video.closest('.slide'));
+    }
+  }
+
+  buildNavDots() {
+    this.navDotsEl.innerHTML = '';
+    this.slides.forEach((_, i) => {
+      const li = document.createElement('li');
+      li.addEventListener('click', () => this.goTo(i));
+      this.navDotsEl.appendChild(li);
+    });
+  }
+
+  updateUI() {
+    const pct = this.total > 1 ? (this.current / (this.total - 1)) * 100 : 100;
+    this.progressBar.style.width = pct + '%';
+    this.counter.textContent = (this.current + 1) + ' / ' + this.total;
+    const dots = this.navDotsEl.querySelectorAll('li');
+    dots.forEach((d, i) => d.classList.toggle('active', i === this.current));
+  }
+
+  goTo(index) {
+    index = Math.max(0, Math.min(this.total - 1, index));
+    if (index === this.current && this.slides[index].classList.contains('visible')) {
+      this.updateUI();
+      return;
+    }
+    this.current = index;
+    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+    this.updateUI();
+
+    // Handle video
+    this.slides.forEach((s, i) => {
+      const v = s.querySelector('video');
+      if (v) {
+        if (i === index) v.play().catch(() => {});
+        else { v.pause(); v.currentTime = 0; }
+      }
+    });
+  }
+
+  setupObserver() {
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          const idx = this.slides.indexOf(e.target);
+          if (idx !== -1) { this.current = idx; this.updateUI(); }
+        }
+      });
+    }, { threshold: 0.5 });
+    this.slides.forEach(s => obs.observe(s));
+  }
+
+  setupKeyboard() {
+    document.addEventListener('keydown', e => {
+      if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault(); this.goTo(this.current + 1);
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault(); this.goTo(this.current - 1);
+      } else if (e.key === 'Home') { e.preventDefault(); this.goTo(0); }
+      else if (e.key === 'End') { e.preventDefault(); this.goTo(this.total - 1); }
+    });
+  }
+
+  setupTouch() {
+    let startY = 0, startX = 0;
+    document.addEventListener('touchstart', e => { startY = e.touches[0].clientY; startX = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const dy = startY - e.changedTouches[0].clientY;
+      const dx = startX - e.changedTouches[0].clientX;
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) {
+        dy > 0 ? this.goTo(this.current + 1) : this.goTo(this.current - 1);
+      }
+    });
+  }
+
+  setupWheel() {
+    let lastWheel = 0;
+    document.addEventListener('wheel', e => {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastWheel < 800) return;
+      lastWheel = now;
+      e.deltaY > 0 ? this.goTo(this.current + 1) : this.goTo(this.current - 1);
+    }, { passive: false });
+  }
+}
+
+/* === INLINE EDITOR === */
+class InlineEditor {
+  constructor() {
+    this.isActive = false;
+    this.hotzone = document.getElementById('editHotzone');
+    this.toggle = document.getElementById('editToggle');
+    this.banner = document.getElementById('editBanner');
+    this.hideTimeout = null;
+    this.setupHover();
+    this.setupKeys();
+    this.toggle.addEventListener('click', () => this.toggleEditMode());
+    this.hotzone.addEventListener('click', () => this.toggleEditMode());
+    this.markEditables();
+  }
+  markEditables() {
+    document.querySelectorAll('h1,h2,p,li,div.formula,div.prompt-block').forEach(el => {
+      if (!el.querySelector('video') && !el.querySelector('canvas')) el.setAttribute('data-editable','');
+    });
+  }
+  setupHover() {
+    this.hotzone.addEventListener('mouseenter', () => { clearTimeout(this.hideTimeout); this.toggle.classList.add('show'); });
+    this.hotzone.addEventListener('mouseleave', () => { this.hideTimeout = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+    this.toggle.addEventListener('mouseenter', () => clearTimeout(this.hideTimeout));
+    this.toggle.addEventListener('mouseleave', () => { this.hideTimeout = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+  }
+  setupKeys() {
+    document.addEventListener('keydown', e => {
+      if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEditMode();
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.exportFile(); }
+    });
+  }
+  toggleEditMode() {
+    this.isActive = !this.isActive;
+    document.body.classList.toggle('edit-active', this.isActive);
+    this.toggle.classList.toggle('active', this.isActive);
+    this.banner.classList.toggle('active', this.isActive);
+    if (this.isActive) {
+      this.toggle.classList.add('show');
+      document.querySelectorAll('[data-editable]').forEach(el => el.setAttribute('contenteditable','true'));
+    } else {
+      document.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    }
+  }
+  exportFile() {
+    const editables = Array.from(document.querySelectorAll('[contenteditable]'));
+    editables.forEach(el => el.removeAttribute('contenteditable'));
+    document.body.classList.remove('edit-active');
+    this.toggle.classList.remove('active','show');
+    this.banner.classList.remove('active');
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    document.body.classList.add('edit-active');
+    editables.forEach(el => el.setAttribute('contenteditable','true'));
+    this.toggle.classList.add('active');
+    this.banner.classList.add('active');
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lesson1_edited.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+}
+
+const pres = new SlidePresentation();
+const editor = new InlineEditor();
+</script>
+</body>
+</html>
