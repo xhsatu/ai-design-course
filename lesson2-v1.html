@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二课：让 Claude 认识你们的设计语言</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Sans+SC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+
+/* ============================================
+   VIEWPORT & RESET
+============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+.slide {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ============================================
+   DESIGN TOKENS — Pentagram × Takram
+   暖米白 + 深墨 + 赤土橙单色accent
+============================================ */
+:root {
+  --bg:       #F5F2ED;
+  --bg-dark:  #1A1A1A;
+  --ink:      #1A1A1A;
+  --ink-2:    #3D3D3D;
+  --ink-3:    #888880;
+  --accent:   #C04A1A;
+  --accent-2: #E8C4B4;
+  --rule:     rgba(26,26,26,0.12);
+
+  --serif:    'Cormorant Garamond', 'Georgia', serif;
+  --sans:     'Noto Sans SC', -apple-system, sans-serif;
+  --mono:     'Space Mono', monospace;
+
+  --pad-x:   clamp(3rem, 7vw, 8rem);
+  --pad-y:   clamp(2.5rem, 5vh, 5rem);
+  --ease:    cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); }
+
+/* ============================================
+   ANIMATIONS
+============================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(1) { transition-delay: 0.05s; }
+.reveal:nth-child(2) { transition-delay: 0.18s; }
+.reveal:nth-child(3) { transition-delay: 0.30s; }
+.reveal:nth-child(4) { transition-delay: 0.42s; }
+.reveal:nth-child(5) { transition-delay: 0.54s; }
+.reveal:nth-child(6) { transition-delay: 0.66s; }
+.reveal:nth-child(7) { transition-delay: 0.78s; }
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+}
+.slide.visible .reveal-left { opacity: 1; transform: translateX(0); }
+
+/* ============================================
+   CHROME — progress, dots, counter
+============================================ */
+.progress-bar {
+  position: fixed; top: 0; left: 0;
+  height: 2px; background: var(--accent);
+  width: 0%; z-index: 1000;
+  transition: width 0.35s ease;
+}
+.nav-dots {
+  position: fixed; right: clamp(1rem, 2vw, 1.75rem); top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column;
+  gap: clamp(5px, 0.7vh, 9px);
+  z-index: 999; list-style: none;
+}
+.nav-dots li {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(26,26,26,0.2);
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+}
+.nav-dots li.active { background: var(--accent); transform: scale(1.6); }
+.kb-hint {
+  position: fixed; bottom: clamp(1rem, 2vh, 1.5rem); left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(0.55rem, 0.75vw, 0.65rem);
+  color: var(--ink-3); letter-spacing: 0.14em;
+  font-family: var(--mono); pointer-events: none; z-index: 998;
+}
+.slide-counter {
+  position: fixed; bottom: clamp(1rem, 2vh, 1.5rem); right: clamp(1rem, 2vw, 1.75rem);
+  font-size: clamp(0.55rem, 0.75vw, 0.65rem);
+  color: var(--ink-3); font-family: var(--mono);
+  letter-spacing: 0.08em; z-index: 998;
+}
+
+/* ============================================
+   SLIDE 0: TITLE — split, left accent panel
+============================================ */
+.slide-title {
+  display: grid;
+  grid-template-columns: 30% 70%;
+  background: var(--bg);
+}
+.slide-title .left-panel {
+  background: var(--accent);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: clamp(2rem, 4vw, 4rem);
+  position: relative;
+  overflow: hidden;
+}
+.slide-title .left-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(255,255,255,0.06) 39px,
+      rgba(255,255,255,0.06) 40px
+    );
+  pointer-events: none;
+}
+.slide-title .course-tag {
+  font-family: var(--mono);
+  font-size: clamp(0.55rem, 0.8vw, 0.68rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: clamp(1rem, 2.5vh, 2rem);
+  line-height: 1.6;
+}
+.slide-title .left-panel h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 3.5vw, 3.2rem);
+  font-weight: 300;
+  line-height: 1.2;
+  color: #fff;
+  font-style: italic;
+}
+.slide-title .left-panel h2 strong {
+  font-style: normal;
+  font-weight: 600;
+  display: block;
+  font-size: 0.85em;
+  color: rgba(255,255,255,0.75);
+}
+.slide-title .right-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(3rem, 7vw, 8rem);
+  position: relative;
+}
+.slide-title .sub {
+  font-family: var(--sans);
+  font-size: clamp(1.05rem, 2vw, 1.5rem);
+  font-weight: 300;
+  color: var(--ink-2);
+  line-height: 1.75;
+  max-width: 560px;
+}
+.slide-title .sub .q {
+  display: block;
+  margin-top: 1.5em;
+  font-family: var(--serif);
+  font-size: 1.2em;
+  font-style: italic;
+  color: var(--accent);
+  font-weight: 400;
+}
+
+/* ============================================
+   STANDARD CONTENT SLIDE
+============================================ */
+.slide-content-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--pad-y) var(--pad-x);
+  height: 100%;
+  background: var(--bg);
+  position: relative;
+}
+.slide-content-wrap > * {
+  width: 100%;
+  max-width: 780px;
+}
+.slide-label {
+  font-family: var(--mono);
+  font-size: clamp(0.58rem, 0.8vw, 0.68rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: clamp(0.75rem, 1.5vh, 1.25rem);
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+}
+.slide-label::before {
+  content: '';
+  display: inline-block;
+  width: 20px; height: 1px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.slide-content-wrap h2 {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 300;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: clamp(1.25rem, 3vh, 2.5rem);
+  font-style: italic;
+}
+.slide-content-wrap h2 strong { font-style: normal; font-weight: 600; }
+.slide-content-wrap h2 span.hl { color: var(--accent); font-style: normal; }
+.slide-content-wrap p {
+  font-family: var(--sans);
+  font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+  color: var(--ink-2);
+  line-height: 1.9;
+  font-weight: 300;
+}
+.slide-content-wrap strong { color: var(--ink); font-weight: 500; }
+
+/* FORMULA / CALLOUT */
+.formula {
+  border-left: 3px solid var(--accent);
+  padding: clamp(1rem, 2vh, 1.5rem) clamp(1.25rem, 2.5vw, 2rem);
+  background: rgba(192, 74, 26, 0.05);
+  margin: clamp(1.25rem, 2.5vh, 2rem) 0;
+  font-family: var(--sans);
+  font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+/* NUMBERED LIST */
+.num-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vh, 1.75rem);
+  counter-reset: num;
+}
+.num-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  counter-increment: num;
+  font-family: var(--sans);
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  color: var(--ink-2);
+  line-height: 1.65;
+  font-weight: 300;
+}
+.num-list li::before {
+  content: counter(num, decimal-leading-zero);
+  font-family: var(--mono);
+  font-size: clamp(0.65rem, 0.9vw, 0.75rem);
+  color: var(--accent);
+  flex-shrink: 0;
+  padding-top: 0.3em;
+  min-width: 2.2em;
+}
+.num-list li strong { color: var(--ink); font-weight: 500; }
+
+/* BULLET LIST */
+.bullet-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vh, 1.5rem);
+}
+.bullet-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 1em;
+  font-family: var(--sans);
+  font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+  color: var(--ink-2);
+  line-height: 1.7;
+  font-weight: 300;
+  padding-bottom: clamp(0.75rem, 1.5vh, 1.25rem);
+  border-bottom: 1px solid var(--rule);
+}
+.bullet-list li:last-child { border-bottom: none; }
+.bullet-list li::before {
+  content: '—';
+  color: var(--accent);
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 0.85em;
+  margin-top: 0.15em;
+}
+.bullet-list li strong { color: var(--ink); font-weight: 500; }
+
+/* COMPARE ROW */
+.compare-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(1rem, 2vw, 1.75rem);
+  margin-top: clamp(1.25rem, 2.5vh, 2rem);
+}
+.compare-item {
+  padding: clamp(1rem, 2vh, 1.5rem) clamp(1rem, 2vw, 1.5rem);
+  font-family: var(--sans);
+  font-size: clamp(0.9rem, 1.35vw, 1.05rem);
+  line-height: 1.7;
+  font-weight: 300;
+}
+.compare-item.dim-bg {
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-3);
+}
+.compare-item.accent-bg {
+  background: rgba(192,74,26,0.06);
+  border: 1px solid rgba(192,74,26,0.25);
+  color: var(--ink);
+}
+.compare-item .compare-label {
+  font-family: var(--mono);
+  font-size: clamp(0.55rem, 0.78vw, 0.65rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.6em;
+  display: block;
+}
+
+/* CONTEXT DIAGRAM */
+.context-diagram {
+  font-family: var(--mono);
+  font-size: clamp(0.82rem, 1.2vw, 0.95rem);
+  color: var(--ink-2);
+  border-left: 2px solid var(--rule);
+  padding: clamp(1.25rem, 2.5vh, 2rem) clamp(1.5rem, 3vw, 2.5rem);
+  margin-top: clamp(1.25rem, 2.5vh, 2rem);
+  line-height: 2.2;
+}
+.context-diagram .arrow { color: var(--accent); }
+.context-diagram .comment {
+  color: var(--ink-3);
+  font-style: italic;
+  font-family: var(--sans);
+  font-size: 0.92em;
+}
+.context-diagram .hl { color: var(--accent); font-weight: 700; }
+
+/* BIG QUESTION SLIDE */
+.slide-question { background: var(--bg-dark); }
+.slide-question .q-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: var(--pad-y) var(--pad-x);
+}
+.slide-question .q-wrap > * {
+  width: 100%;
+  max-width: 780px;
+}
+.slide-question .slide-label {
+  color: rgba(255,255,255,0.35);
+}
+.slide-question .slide-label::before { background: var(--accent); }
+.slide-question .big-q {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4.5vw, 4rem);
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.25;
+  color: #fff;
+}
+.slide-question .big-q .hl {
+  color: var(--accent-2);
+  font-style: italic;
+}
+.slide-question .q-sub {
+  margin-top: clamp(1.5rem, 3vh, 2.5rem);
+  font-family: var(--sans);
+  font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+  color: rgba(255,255,255,0.45);
+  line-height: 1.75;
+  font-weight: 300;
+}
+
+/* INTERACT BADGE */
+.interact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  border: 1px solid var(--rule);
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: clamp(0.6rem, 0.85vw, 0.72rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.45em 1em;
+  margin-top: clamp(1.5rem, 3vh, 2.5rem);
+  width: fit-content;
+}
+.interact-badge::before {
+  content: '◆';
+  font-size: 0.5em;
+  color: var(--accent);
+}
+.slide-question .interact-badge {
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.35);
+}
+
+/* PROMPT CODE */
+.prompt-code {
+  border-left: 3px solid var(--accent);
+  background: rgba(26,26,26,0.04);
+  padding: clamp(1.25rem, 2.5vh, 2rem) clamp(1.5rem, 3vw, 2.5rem);
+  font-family: var(--sans);
+  font-size: clamp(0.88rem, 1.3vw, 1rem);
+  color: var(--ink-2);
+  line-height: 1.85;
+  margin-top: clamp(1.25rem, 2.5vh, 2rem);
+  font-weight: 300;
+  max-height: 52vh;
+  overflow: hidden;
+}
+
+/* CLOSING SLIDE */
+.slide-close {
+  background: var(--bg-dark);
+  display: grid;
+  grid-template-columns: 38% 62%;
+}
+.slide-close .left-p {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: clamp(2rem, 4vw, 4rem);
+  overflow: hidden;
+}
+.slide-close .big-num {
+  font-family: var(--serif);
+  font-size: clamp(8rem, 20vw, 18rem);
+  font-weight: 300;
+  font-style: italic;
+  color: rgba(255,255,255,0.06);
+  line-height: 1;
+  letter-spacing: -0.05em;
+  user-select: none;
+  pointer-events: none;
+}
+.slide-close .right-p {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(2.5rem, 5vw, 6rem);
+}
+.slide-close h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 3.5vw, 3rem);
+  font-weight: 300;
+  font-style: italic;
+  color: #fff;
+  margin-bottom: clamp(1.5rem, 3vh, 2.5rem);
+}
+.slide-close .close-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vh, 1.5rem);
+  counter-reset: n;
+}
+.slide-close .close-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25em;
+  counter-increment: n;
+  font-family: var(--sans);
+  font-size: clamp(0.9rem, 1.4vw, 1.05rem);
+  color: rgba(255,255,255,0.55);
+  line-height: 1.65;
+  font-weight: 300;
+  padding-bottom: clamp(0.85rem, 1.8vh, 1.4rem);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.slide-close .close-list li:last-child { border-bottom: none; }
+.slide-close .close-list li::before {
+  content: counter(n, decimal-leading-zero);
+  font-family: var(--mono);
+  font-size: 0.78em;
+  color: var(--accent);
+  flex-shrink: 0;
+  padding-top: 0.15em;
+}
+
+/* MCP FEATURE GRID */
+.mcp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  margin-top: clamp(1.25rem, 2.5vh, 2rem);
+}
+.mcp-card {
+  padding: clamp(1rem, 2vh, 1.5rem) clamp(0.75rem, 1.5vw, 1.25rem);
+  border-top: 2px solid var(--ink);
+  background: transparent;
+}
+.mcp-card:first-child { border-top-color: var(--accent); }
+.mcp-card .mcp-name {
+  font-family: var(--serif);
+  font-size: clamp(1rem, 1.5vw, 1.3rem);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--ink);
+  margin-bottom: 0.5em;
+}
+.mcp-card p {
+  font-size: clamp(0.78rem, 1.1vw, 0.9rem);
+  color: var(--ink-2);
+  line-height: 1.65;
+  font-weight: 300;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+  html { scroll-behavior: auto; }
+}
+@media (max-height: 700px) {
+  :root { --pad-x: clamp(2rem, 5vw, 5rem); --pad-y: clamp(1.5rem, 3vh, 3rem); }
+}
+@media (max-height: 600px) {
+  .nav-dots, .kb-hint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots" aria-label="Slide navigation"></nav>
+<div class="kb-hint">← → 方向键翻页 &nbsp;·&nbsp; Space 下一页</div>
+<div class="slide-counter" id="slideCounter"></div>
+
+<!-- ===== P1: TITLE ===== -->
+<section class="slide slide-title" aria-label="标题页">
+  <div class="left-panel">
+    <p class="course-tag reveal-left">给体验设计师的 AI 转型课 · 第二课</p>
+    <h2 class="reveal-left">让 Claude<br>认识你们的<br><strong>设计语言</strong></h2>
+  </div>
+  <div class="right-panel">
+    <p class="sub reveal">上节课，Claude 认识了你这个人。<br><span class="q">这节课，让 Claude 认识你们的设计语言。</span></p>
+  </div>
+</section>
+
+<!-- ===== P2: 今天的目标 ===== -->
+<section class="slide" aria-label="今天的目标">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">今天的目标</p>
+    <h2 class="reveal">今天，<br>我们做四件事</h2>
+    <ol class="num-list">
+      <li class="reveal"><strong>给 Claude 装上眼睛</strong>（MCP）</li>
+      <li class="reveal"><strong>教它怎么看你的设计</strong>（结构化 Prompt）</li>
+      <li class="reveal"><strong>把它学到的固化成工具</strong>（Skill）</li>
+      <li class="reveal"><strong>让它替你说话</strong>（验证）</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===== P3: 开场反差 ===== -->
+<section class="slide slide-question" aria-label="开场反差">
+  <div class="q-wrap">
+    <p class="slide-label reveal">先试一下</p>
+    <p class="big-q reveal">不给任何信息，<br>直接让 Claude 生成<br>一个「符合你项目风格」<br>的界面。</p>
+    <p class="q-sub reveal">「帮我生成一个符合我们产品风格的界面。」</p>
+    <span class="interact-badge reveal">实操：在 Claude Code 里操作，看看效果</span>
+  </div>
+</section>
+
+<!-- ===== P4: 悬念 ===== -->
+<section class="slide slide-question" aria-label="为什么">
+  <div class="q-wrap">
+    <p class="slide-label reveal">为什么</p>
+    <p class="big-q reveal">它为什么会<br>生成得这么差？<br><br>不是能力不够——<br>是<span class="hl">能看到的东西</span><br>不够。</p>
+    <p class="q-sub reveal">它能看到你的 Figma 吗？</p>
+    <span class="interact-badge reveal">互动：有同学知道怎么办吗？</span>
+  </div>
+</section>
+
+<!-- ===== P5: 揭秘 MCP ===== -->
+<section class="slide" aria-label="MCP 是什么">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">有一个东西</p>
+    <h2 class="reveal">叫 <span class="hl">MCP</span></h2>
+    <div class="compare-row" style="margin-top: clamp(1.5rem, 3vh, 2.5rem);">
+      <div class="compare-item dim-bg reveal">
+        <span class="compare-label">没有 MCP</span>
+        Claude 只能读到文字
+      </div>
+      <div class="compare-item accent-bg reveal">
+        <span class="compare-label">有了 MCP</span>
+        Claude 能看到 Figma、文件系统……
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:clamp(1.25rem,2.5vh,2rem);">
+      MCP 就像 <strong>USB</strong> 协议——<br>
+      USB 让电脑能接任何外设，<br>
+      MCP 让 Claude 能接任何外部工具。
+    </p>
+  </div>
+</section>
+
+<!-- ===== P6: 实操连接 Figma ===== -->
+<section class="slide" aria-label="连接 Figma">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">验证</p>
+    <h2 class="reveal">Figma MCP<br>有没有连上？</h2>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      对它说：<br>
+      <strong>「帮我读取 Figma 文件 [fileKey]，<br>告诉我里面有哪些核心组件和 Token。」</strong>
+    </p>
+    <span class="interact-badge reveal">实操：在 Claude Code 里操作</span>
+  </div>
+</section>
+
+<!-- ===== P7: 悬念——看到不等于理解 ===== -->
+<section class="slide slide-question" aria-label="看到不等于理解">
+  <div class="q-wrap">
+    <p class="slide-label reveal">等等</p>
+    <p class="big-q reveal">现在它<br>能看到了——<br><br>但「看到」<br>不等于<br><span class="hl">「理解」。</span></p>
+    <p class="q-sub reveal">它能提炼出什么，取决于你怎么问。</p>
+  </div>
+</section>
+
+<!-- ===== P8: 阶梯实操 ① 直觉 Prompt ===== -->
+<section class="slide" aria-label="阶梯实操 1">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">试一下</p>
+    <h2 class="reveal">凭直觉来</h2>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      用你自己觉得最对的方式，<br>
+      写一段 Prompt，<br>
+      让 Claude 描述你项目的设计风格。<br><br>
+      <strong>怎么问都行。</strong>
+    </p>
+    <span class="interact-badge reveal">实操：在 Claude Code 里操作（2 分钟）</span>
+  </div>
+</section>
+
+<!-- ===== P9: 揭秘结构化 Prompt ===== -->
+<section class="slide" aria-label="结构化 Prompt">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">发现问题了吗</p>
+    <h2 class="reveal">有没有感觉<br>它的回答有点……泛？</h2>
+    <p class="reveal">放在任何项目都成立。<br><br>
+    问题出在 Prompt：<br>
+    <strong>你说得越宽，它就回答得越宽。</strong></p>
+    <div class="compare-row" style="margin-top:clamp(1rem,2vh,1.5rem);">
+      <div class="compare-item dim-bg reveal">
+        <span class="compare-label">宽泛输入</span>
+        → 宽泛输出
+      </div>
+      <div class="compare-item accent-bg reveal">
+        <span class="compare-label">具体输入</span>
+        → 具体输出
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== P10: 阶梯实操 ② 结构化 Prompt ===== -->
+<section class="slide" aria-label="阶梯实操 2">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">重写一遍</p>
+    <h2 class="reveal">用结构化 Prompt<br>再问一次</h2>
+    <div class="prompt-code reveal" style="margin-top:clamp(1rem,2vh,1.5rem);">
+      「请分析这个 Figma 文件，重点提取：<br>
+      1. 色彩系统——主色、辅色、中性色<br>
+      2. 间距逻辑——基础单位和规律<br>
+      3. 组件命名习惯<br>
+      4. 这个设计最显著的视觉特质<br><br>
+      用分类列表输出，每类 2-4 条，尽量具体。」
+    </div>
+    <span class="interact-badge reveal">实操：在 Claude Code 里操作，和第一次对比</span>
+  </div>
+</section>
+
+<!-- ===== P11: 悬念——下次会忘 ===== -->
+<section class="slide slide-question" aria-label="下次会忘">
+  <div class="q-wrap">
+    <p class="slide-label reveal">但是</p>
+    <p class="big-q reveal">Claude 现在<br>读懂了你项目的<br>设计语言。<br><br>但它<span class="hl">下次</span><br>还是会忘。</p>
+    <p class="q-sub reveal">怎么让它永远记住？</p>
+    <span class="interact-badge reveal">互动：有同学知道吗？</span>
+  </div>
+</section>
+
+<!-- ===== P12: 揭秘 Skill vs CLAUDE.md ===== -->
+<section class="slide" aria-label="Skill vs CLAUDE.md">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">对比</p>
+    <h2 class="reveal">上节课用 CLAUDE.md<br>让它认识了你。<br>这节课用 Skill<br>让它掌握一个领域。</h2>
+    <div class="compare-row" style="margin-top:clamp(1.25rem,2.5vh,2rem);">
+      <div class="compare-item dim-bg reveal">
+        <span class="compare-label">CLAUDE.md</span>
+        每次强制加载<br>永远在 Context 里
+      </div>
+      <div class="compare-item accent-bg reveal">
+        <span class="compare-label">Skill</span>
+        需要时才调用<br>按需加载
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== P13: Skill 怎么被调用 ===== -->
+<section class="slide" aria-label="Skill 如何触发">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">机制</p>
+    <h2 class="reveal">Skill<br>是怎么被调用的？</h2>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      Claude 扫描所有 Skill 的 <strong>description</strong><br>
+      → 关键词匹配 → 自动激活</p>
+    <div class="formula reveal" style="margin-top:clamp(1rem,2vh,1.5rem);">
+      大概率不会自动触发——<br>
+      每个人的业务不同，关键词不一样，<br>
+      第一次很难一次写对。
+    </div>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      没触发？<br>
+      手动 <strong>/skill 名称</strong> 调用，<br>
+      再回来改 description。</p>
+    <div class="formula reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      装再多 Skill 也不会卡——<br>
+      只有用到的才会被加载。
+    </div>
+    <span class="interact-badge reveal">重点：自动激活失败是正常的，不是你做错了</span>
+  </div>
+</section>
+
+<!-- ===== P14: 蒸馏实操 ① 生成 SKILL.md ===== -->
+<section class="slide" aria-label="蒸馏 SKILL.md">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">现在</p>
+    <h2 class="reveal">把刚才的分析<br>固化成 Skill</h2>
+    <div class="formula reveal" style="margin-top:clamp(1rem,2vh,1.5rem); font-size:clamp(0.88rem,1.3vw,1rem);">
+      ⚠  description 是关键——<br>
+      关键词决定了它能不能被自动触发。
+    </div>
+    <div class="prompt-code reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      「把我刚才分析的设计语言<br>
+      整理成一个 SKILL.md——<br>
+      · name：用项目名<br>
+      · <strong>description</strong>：当用户提到 [你的关键词 A]、<br>
+        [关键词 B]、或用 [项目名] 风格设计时，自动激活<br>
+      · 正文：刚才总结的色彩、间距、命名规律<br><br>
+      保存到 ~/.claude/skills/[项目名]/SKILL.md。」
+    </div>
+    <span class="interact-badge reveal">实操：在 Claude Code 里操作</span>
+  </div>
+</section>
+
+<!-- ===== P15: 自测 Skill 是否触发 ===== -->
+<section class="slide" aria-label="自测 Skill 触发">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">自测</p>
+    <h2 class="reveal">它真的触发了？</h2>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      新开一个对话，<br>
+      说一句应该触发 Skill 的话——</p>
+    <div class="formula reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem); font-family:var(--serif); font-style:italic; font-size:clamp(1.1rem,2vw,1.6rem);">
+      「帮我评审这个界面，<br>看它符不符合我们项目的风格。」
+    </div>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">
+      触发了 → <strong>过</strong><br>
+      没触发 → 回去改 description 的关键词 → 再试
+    </p>
+    <span class="interact-badge reveal">你的 Claude 就是最好的测试工具</span>
+  </div>
+</section>
+
+<!-- ===== P16: 蒸馏实操 ② 补充 ===== -->
+<section class="slide" aria-label="人工补充">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">补充</p>
+    <h2 class="reveal">Claude 蒸馏出来的是<br>它「看到的」——<br>你还要补上<br>它「看不到的」</h2>
+    <ul class="bullet-list" style="margin-top:clamp(1rem,2vh,1.5rem);">
+      <li class="reveal">团队不成文的审美判断</li>
+      <li class="reveal">明确不要做的事</li>
+      <li class="reveal">踩过的坑</li>
+    </ul>
+    <span class="interact-badge reveal">互动：两两交换 SKILL.md——能从里面读出对方团队的设计语言吗？</span>
+  </div>
+</section>
+
+<!-- ===== P17: 验证过渡 ===== -->
+<section class="slide slide-question" aria-label="验证过渡">
+  <div class="q-wrap">
+    <p class="slide-label reveal">验证</p>
+    <p class="big-q reveal">它现在认识<br>你们的设计语言了。<br><br>但光是<span class="hl">「认识」</span><br>有什么用？</p>
+    <p class="q-sub reveal">我们来看看——它能不能用你们的语言来说话。</p>
+  </div>
+</section>
+
+<!-- ===== P18: 验证重新生成 ===== -->
+<section class="slide" aria-label="验证重新生成">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">重新试一次</p>
+    <h2 class="reveal">新开一个对话，<br>再问一次 P3 那个问题</h2>
+    <div class="formula reveal" style="margin-top:clamp(1rem,2vh,1.5rem); font-family:var(--serif); font-style:italic; font-size:clamp(1.1rem,2vw,1.6rem);">
+      「帮我生成一个<br>符合我们产品风格的界面。」
+    </div>
+    <p class="reveal" style="margin-top:clamp(0.75rem,1.5vh,1.25rem);">写完之后，打开看——<strong>和刚才第一次，有什么不同？</strong></p>
+    <span class="interact-badge reveal">实操：在 Claude Code 里操作，和 P3 对比</span>
+  </div>
+</section>
+
+<!-- ===== P19: 对比高潮 ===== -->
+<section class="slide slide-question" aria-label="对比高潮">
+  <div class="q-wrap">
+    <p class="slide-label reveal">结论</p>
+    <p class="big-q reveal">互相看看<br>对方做出来的东西。<br><br>同一个问题——<br>为什么每个人出来的<br>东西<span class="hl">不一样？</span></p>
+    <p class="q-sub reveal">因为 Skill 不一样。<br>它认识的是不同团队的设计语言。</p>
+    <span class="interact-badge reveal">互动：分享一个让你觉得「这真的是我们风格」的输出</span>
+  </div>
+</section>
+
+<!-- ===== P20: 其他 MCP ===== -->
+<section class="slide" aria-label="其他 MCP">
+  <div class="slide-content-wrap">
+    <p class="slide-label reveal">顺便</p>
+    <h2 class="reveal">Figma MCP<br>只是第一个。</h2>
+    <div class="mcp-grid" style="margin-top:clamp(1.25rem,2.5vh,2rem);">
+      <div class="mcp-card reveal">
+        <div class="mcp-name">Paper MCP</div>
+        <p>Claude 能在画布里直接写 HTML</p>
+      </div>
+      <div class="mcp-card reveal">
+        <div class="mcp-name">Playwright MCP</div>
+        <p>Claude 能打开浏览器测试界面</p>
+      </div>
+      <div class="mcp-card reveal">
+        <div class="mcp-name">更多…</div>
+        <p>核心逻辑都一样</p>
+      </div>
+    </div>
+    <div class="formula reveal" style="margin-top:clamp(1rem,2vh,1.5rem);">
+      装眼睛 → 喂信息 → 固化 Skill
+    </div>
+    <span class="interact-badge reveal">互动：你觉得还能接什么工具？让 Claude 帮你做什么？</span>
+  </div>
+</section>
+
+<!-- ===== P21: 收尾 ===== -->
+<section class="slide slide-close" aria-label="收尾">
+  <div class="left-p">
+    <div class="big-num reveal">21</div>
+  </div>
+  <div class="right-p">
+    <h2 class="reveal">今天走过的路</h2>
+    <ol class="close-list">
+      <li class="reveal">MCP——装上眼睛</li>
+      <li class="reveal">结构化 Prompt——教它看</li>
+      <li class="reveal">Skill——固化知识</li>
+      <li class="reveal">验证——它替你说话</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===== P22: 留开口 ===== -->
+<section class="slide slide-question" aria-label="留开口">
+  <div class="q-wrap">
+    <p class="slide-label reveal">下课</p>
+    <p class="big-q reveal">你今天蒸馏出来的<br>是<span class="hl">第一版</span>——<br>它还很粗糙。<br><br>Skill 会随着<br>你的项目演进，<br>越来越准。</p>
+    <p class="q-sub reveal">下去之后，把它用起来。<br>下节课——我们让它真正介入你的日常工作流。</p>
+  </div>
+</section>
+
+<!-- ===== INLINE EDIT ===== -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="编辑模式 (E)">✏️</button>
+<div class="edit-banner" id="editBanner">编辑模式 · 点击文字修改 · Ctrl+S 保存</div>
+<style>
+.edit-hotzone { position:fixed; top:0; left:0; width:80px; height:80px; z-index:10000; cursor:pointer; }
+.edit-toggle { position:fixed; top:1rem; left:1rem; z-index:10001; background:var(--accent); color:#fff; border:none; border-radius:2px; padding:0.4em 0.75em; font-size:0.75rem; cursor:pointer; opacity:0; pointer-events:none; transition:opacity 0.3s; font-family:var(--mono); }
+.edit-toggle.show, .edit-toggle.active { opacity:1; pointer-events:auto; }
+.edit-banner { position:fixed; top:0; left:0; right:0; background:var(--accent); color:#fff; font-family:var(--mono); font-size:0.65rem; letter-spacing:0.12em; text-align:center; padding:0.4em; z-index:9999; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+.edit-banner.active { opacity:1; }
+body.edit-active [data-editable] { outline:1px dashed rgba(192,74,26,0.4); cursor:text; }
+</style>
+
+<script>
+class SlidePresentation {
+  constructor() {
+    this.slides = Array.from(document.querySelectorAll('.slide'));
+    this.current = 0;
+    this.total = this.slides.length;
+    this.progressBar = document.getElementById('progressBar');
+    this.counter = document.getElementById('slideCounter');
+    this.navDotsEl = document.getElementById('navDots');
+    this.buildNavDots();
+    this.setupObserver();
+    this.setupKeyboard();
+    this.setupTouch();
+    this.setupWheel();
+    this.goTo(0);
+    // 确保第一页动画触发——Observer 初始化有时序竞态
+    this.slides[0].classList.add('visible');
+  }
+  buildNavDots() {
+    this.navDotsEl.innerHTML = '';
+    this.slides.forEach((_, i) => {
+      const li = document.createElement('li');
+      li.addEventListener('click', () => this.goTo(i));
+      this.navDotsEl.appendChild(li);
+    });
+  }
+  updateUI() {
+    const pct = this.total > 1 ? (this.current / (this.total - 1)) * 100 : 100;
+    this.progressBar.style.width = pct + '%';
+    this.counter.textContent = (this.current + 1) + ' / ' + this.total;
+    this.navDotsEl.querySelectorAll('li').forEach((d, i) => d.classList.toggle('active', i === this.current));
+  }
+  goTo(index) {
+    index = Math.max(0, Math.min(this.total - 1, index));
+    this.current = index;
+    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+    this.updateUI();
+  }
+  setupObserver() {
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          const idx = this.slides.indexOf(e.target);
+          if (idx !== -1) { this.current = idx; this.updateUI(); }
+        }
+      });
+    }, { threshold: 0.5 });
+    this.slides.forEach(s => obs.observe(s));
+  }
+  setupKeyboard() {
+    document.addEventListener('keydown', e => {
+      if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+      if (['ArrowDown','ArrowRight',' '].includes(e.key)) { e.preventDefault(); this.goTo(this.current + 1); }
+      else if (['ArrowUp','ArrowLeft'].includes(e.key)) { e.preventDefault(); this.goTo(this.current - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); this.goTo(0); }
+      else if (e.key === 'End') { e.preventDefault(); this.goTo(this.total - 1); }
+    });
+  }
+  setupTouch() {
+    let sy = 0, sx = 0;
+    document.addEventListener('touchstart', e => { sy = e.touches[0].clientY; sx = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const dy = sy - e.changedTouches[0].clientY, dx = sx - e.changedTouches[0].clientX;
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) { dy > 0 ? this.goTo(this.current + 1) : this.goTo(this.current - 1); }
+    });
+  }
+  setupWheel() {
+    let last = 0;
+    document.addEventListener('wheel', e => {
+      e.preventDefault();
+      const now = Date.now(); if (now - last < 800) return; last = now;
+      e.deltaY > 0 ? this.goTo(this.current + 1) : this.goTo(this.current - 1);
+    }, { passive: false });
+  }
+}
+class InlineEditor {
+  constructor() {
+    this.isActive = false;
+    this.hotzone = document.getElementById('editHotzone');
+    this.toggle = document.getElementById('editToggle');
+    this.banner = document.getElementById('editBanner');
+    this.hideTimeout = null;
+    this.setupHover(); this.setupKeys();
+    this.toggle.addEventListener('click', () => this.toggleEditMode());
+    this.hotzone.addEventListener('click', () => this.toggleEditMode());
+    this.markEditables();
+  }
+  markEditables() {
+    document.querySelectorAll('h1,h2,p,li,div.formula,div.prompt-code').forEach(el => el.setAttribute('data-editable',''));
+  }
+  setupHover() {
+    this.hotzone.addEventListener('mouseenter', () => { clearTimeout(this.hideTimeout); this.toggle.classList.add('show'); });
+    this.hotzone.addEventListener('mouseleave', () => { this.hideTimeout = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+    this.toggle.addEventListener('mouseenter', () => clearTimeout(this.hideTimeout));
+    this.toggle.addEventListener('mouseleave', () => { this.hideTimeout = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+  }
+  setupKeys() {
+    document.addEventListener('keydown', e => {
+      if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEditMode();
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.exportFile(); }
+    });
+  }
+  toggleEditMode() {
+    this.isActive = !this.isActive;
+    document.body.classList.toggle('edit-active', this.isActive);
+    this.toggle.classList.toggle('active', this.isActive);
+    this.banner.classList.toggle('active', this.isActive);
+    if (this.isActive) {
+      this.toggle.classList.add('show');
+      document.querySelectorAll('[data-editable]').forEach(el => el.setAttribute('contenteditable','true'));
+    } else {
+      document.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    }
+  }
+  exportFile() {
+    const editables = Array.from(document.querySelectorAll('[contenteditable]'));
+    editables.forEach(el => el.removeAttribute('contenteditable'));
+    document.body.classList.remove('edit-active');
+    this.toggle.classList.remove('active','show');
+    this.banner.classList.remove('active');
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    document.body.classList.add('edit-active');
+    editables.forEach(el => el.setAttribute('contenteditable','true'));
+    this.toggle.classList.add('active'); this.banner.classList.add('active');
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'lesson2_edited.html'; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+}
+const pres = new SlidePresentation();
+const editor = new InlineEditor();
+</script>
+</body>
+</html>
